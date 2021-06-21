@@ -28,7 +28,11 @@ public class Client extends JFrame {
             if ("upload".equals(cmd[0])) {
                 sendFile(cmd[1]);
             } else if ("download".equals(cmd[0])) {
-                getFile(cmd[1]);
+                try {
+                    getFile(cmd[1]);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         });
 
@@ -47,8 +51,29 @@ public class Client extends JFrame {
         setVisible(true);
     }
 
-    private void getFile(String s) {
+    private void getFile(String s) throws IOException {
         // TODO: 14.06.2021
+        File file = new File("server" + File.separator + s);
+        if (!file.exists()) {
+            throw new FileNotFoundException();
+        }
+        long fileLength = file.length();
+        FileInputStream fis = new FileInputStream(file);
+        dos.writeUTF("download");
+        dos.writeUTF(s);
+        dos.writeLong(fileLength);
+
+        int read = 0;
+        byte[] buffer = new byte[8 * 1024];
+        while ((read = fis.read(buffer)) != -1){
+            dis.read(buffer,0,read);
+        }
+
+
+        dos.flush();
+        String status = dis.readUTF();
+        System.out.println("Sending status: " + status);
+
     }
 
     private void sendFile(String filename) {
