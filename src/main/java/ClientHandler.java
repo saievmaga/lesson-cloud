@@ -20,7 +20,7 @@ public class ClientHandler implements Runnable {
                 String command = dis.readUTF();
                 if ("upload".equals(command)) {
                     try {
-                        File file = new File("server"  + File.separator + dis.readUTF());
+                        File file = new File("server" + File.separator + dis.readUTF());
                         if (!file.exists()) {
                             file.createNewFile();
                         }
@@ -45,22 +45,35 @@ public class ClientHandler implements Runnable {
                     // TODO: 14.06.2021
                     try {
                         File file = new File("client" + File.separator + dis.readUTF());
+                        System.out.println("Sending: " + file.getName());
+
+                        String status;
+
                         if (!file.exists()) {
-                            file.createNewFile();
+                            dos.writeUTF("FILE_NOT_FOUND");
+                            status = dis.readUTF();
+                            System.out.println("Sending status: " + status);
+                            continue;
                         }
+
+                        dos.writeUTF("READY_TO_SEND");
+
+                        long fileLength = file.length();
+                        dos.writeLong(fileLength);
 
                         FileInputStream fis = new FileInputStream(file);
 
-                        long size = dis.readLong();
-
+                        int read = 0;
                         byte[] buffer = new byte[8 * 1024];
-                        for (int i = 0; i < (size + (buffer.length - 1)) / (buffer.length); i++) {
-                            int read = dis.read(buffer);
-                            fis.read(buffer, 0, read);
+                        while ((read = fis.read(buffer)) != -1) {
+                            dos.write(buffer, 0, read);
                         }
-                        fis.close();
-                        dos.writeUTF("OK");
 
+                        dos.flush();
+                        fis.close();
+
+                        status = dis.readUTF();
+                        System.out.println("Sending status: " + status);
                     } catch (Exception e) {
                         dos.writeUTF("ERROR");
                     }
@@ -70,8 +83,6 @@ public class ClientHandler implements Runnable {
                     break;
                 }
 
-                System.out.println(command);
-                dos.writeUTF(command);
             }
         } catch (Exception e) {
             e.printStackTrace();
