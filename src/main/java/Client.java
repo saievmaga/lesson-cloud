@@ -28,7 +28,11 @@ public class Client extends JFrame {
             if ("upload".equals(cmd[0])) {
                 sendFile(cmd[1]);
             } else if ("download".equals(cmd[0])) {
-                getFile(cmd[1]);
+                try {
+                    getFile(cmd[1]);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         });
 
@@ -47,15 +51,45 @@ public class Client extends JFrame {
         setVisible(true);
     }
 
-    private void getFile(String s) {
+    private void getFile(String filename) throws IOException {
         // TODO: 14.06.2021
+        try {
+            dos.writeUTF("download");
+            dos.writeUTF(filename);
+
+            String status = dis.readUTF();
+            if (status.equals("READY_TO_SEND")) {
+                File file = new File("client" + File.separator + filename);
+                if (!file.exists()) {
+                    file.createNewFile();
+                }
+
+                FileOutputStream fos = new FileOutputStream(file);
+
+                long size = dis.readLong();
+                byte[] buffer = new byte[8 * 1024];
+
+                for (int i = 0; i < (size + (buffer.length - 1)) / (buffer.length); i++) {
+                    int read = dis.read(buffer);
+                    fos.write(read);
+                }
+                fos.close();
+                System.out.println("File: " + filename + "received");
+                dos.writeUTF("OK");
+            } else if (status.equals("FILE_NOT_FOUND")) {
+                System.out.println("File: " + filename + "not found");
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void sendFile(String filename) {
         try {
             File file = new File("client" + File.separator + filename);
             if (!file.exists()) {
-                throw  new FileNotFoundException();
+                throw new FileNotFoundException();
             }
 
             long fileLength = file.length();
@@ -70,11 +104,11 @@ public class Client extends JFrame {
             while ((read = fis.read(buffer)) != -1) {
                 dos.write(buffer, 0, read);
             }
-
+            fis.close();
             dos.flush();
 
             String status = dis.readUTF();
-            System.out.println("sending status: " + status);
+            System.out.println("Sending status: " + status);
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();

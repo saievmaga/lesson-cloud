@@ -1,7 +1,4 @@
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
+import java.io.*;
 import java.net.Socket;
 
 public class ClientHandler implements Runnable {
@@ -23,7 +20,7 @@ public class ClientHandler implements Runnable {
                 String command = dis.readUTF();
                 if ("upload".equals(command)) {
                     try {
-                        File file = new File("server"  + File.separator + dis.readUTF());
+                        File file = new File("server" + File.separator + dis.readUTF());
                         if (!file.exists()) {
                             file.createNewFile();
                         }
@@ -46,14 +43,46 @@ public class ClientHandler implements Runnable {
 
                 if ("download".equals(command)) {
                     // TODO: 14.06.2021
+                    try {
+                        File file = new File("client" + File.separator + dis.readUTF());
+                        System.out.println("Sending: " + file.getName());
+
+                        String status;
+
+                        if (!file.exists()) {
+                            dos.writeUTF("FILE_NOT_FOUND");
+                            status = dis.readUTF();
+                            System.out.println("Sending status: " + status);
+                            continue;
+                        }
+
+                        dos.writeUTF("READY_TO_SEND");
+
+                        long fileLength = file.length();
+                        dos.writeLong(fileLength);
+
+                        FileInputStream fis = new FileInputStream(file);
+
+                        int read = 0;
+                        byte[] buffer = new byte[8 * 1024];
+                        while ((read = fis.read(buffer)) != -1) {
+                            dos.write(buffer, 0, read);
+                        }
+
+                        dos.flush();
+                        fis.close();
+
+                        status = dis.readUTF();
+                        System.out.println("Sending status: " + status);
+                    } catch (Exception e) {
+                        dos.writeUTF("ERROR");
+                    }
                 }
                 if ("exit".equals(command)) {
                     System.out.printf("Client %s disconnected correctly\n", socket.getInetAddress());
                     break;
                 }
 
-                System.out.println(command);
-                dos.writeUTF(command);
             }
         } catch (Exception e) {
             e.printStackTrace();
